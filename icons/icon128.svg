@@ -1,0 +1,56 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <defs>
+    <radialGradient id="bg-gradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#0a0e27;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#050814;stop-opacity:1" />
+    </radialGradient>
+    
+    <radialGradient id="arc-gradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" style="stop-color:#00D9FF;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#00D9FF;stop-opacity:0.5" />
+      <stop offset="100%" style="stop-color:#00D9FF;stop-opacity:0" />
+    </radialGradient>
+    
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="64" cy="64" r="60" fill="url(#bg-gradient)"/>
+  
+  <!-- Outer glow -->
+  <circle cx="64" cy="64" r="58" fill="none" stroke="#00D9FF" stroke-width="1" opacity="0.3"/>
+  
+  <!-- Arc Reactor Rings -->
+  <circle cx="64" cy="64" r="45" fill="none" stroke="#00D9FF" stroke-width="2" opacity="0.4"/>
+  <circle cx="64" cy="64" r="35" fill="none" stroke="#00D9FF" stroke-width="2.5" opacity="0.6"/>
+  <circle cx="64" cy="64" r="25" fill="none" stroke="#00D9FF" stroke-width="3" opacity="0.8"/>
+  
+  <!-- Shield Shape -->
+  <path d="M 64 30 L 85 40 L 85 75 Q 85 90 64 98 Q 43 90 43 75 L 43 40 Z" 
+        fill="none" stroke="#00D9FF" stroke-width="2.5" filter="url(#glow)"/>
+  
+  <!-- Inner shield detail -->
+  <path d="M 64 38 L 80 45 L 80 73 Q 80 84 64 90 Q 48 84 48 73 L 48 45 Z" 
+        fill="rgba(0, 217, 255, 0.2)" stroke="#00D9FF" stroke-width="1.5"/>
+  
+  <!-- Center core -->
+  <circle cx="64" cy="64" r="12" fill="url(#arc-gradient)" filter="url(#glow)"/>
+  <circle cx="64" cy="64" r="8" fill="#00D9FF" opacity="0.9"/>
+  
+  <!-- Core highlights -->
+  <circle cx="64" cy="64" r="4" fill="#ffffff" opacity="0.8"/>
+  <circle cx="62" cy="62" r="2" fill="#ffffff" opacity="1"/>
+  
+  <!-- Decorative corner elements -->
+  <line x1="30" y1="30" x2="38" y2="38" stroke="#00D9FF" stroke-width="2" opacity="0.6"/>
+  <line x1="98" y1="30" x2="90" y2="38" stroke="#00D9FF" stroke-width="2" opacity="0.6"/>
+  <line x1="30" y1="98" x2="38" y2="90" stroke="#00D9FF" stroke-width="2" opacity="0.6"/>
+  <line x1="98" y1="98" x2="90" y2="90" stroke="#00D9FF" stroke-width="2" opacity="0.6"/>
+</svg>
