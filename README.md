@@ -71,7 +71,7 @@ While other ad blockers charge for basic features, StarkBlock gives you **everyt
 
 #### Chrome/Edge (Recommended)
 
-1. **Download** the latest release from [Releases](https://github.com/yourusername/starkblock/releases)
+1. **Download** the latest release from [Releases](https://github.com/raunaksingh765/starkblock/releases)
 2. **Unzip** the file to a permanent location
 3. Open **Chrome** and navigate to `chrome://extensions/`
 4. Enable **Developer Mode** (top-right toggle)
@@ -87,7 +87,7 @@ Firefox support is in development and will be released soon.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/starkblock.git
+git clone https://github.com/raunaksingh765/starkblock.git
 
 # Navigate to the directory
 cd starkblock
@@ -219,9 +219,9 @@ This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) 
 
 ## 💬 Support
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/starkblock/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/starkblock/discussions)
-- **Email**: support@starkblock.dev
+- **Issues**: [GitHub Issues](https://github.com/raunaksingh765/starkblock/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/raunaksingh765/starkblock/discussions)
+- **Email**: raunaksingh.2008@rediffmail.com
 
 ## ⭐ Star History
 
@@ -235,6 +235,6 @@ If StarkBlock helped you, consider giving it a star! ⭐
 
 *"Sometimes you gotta run before you can walk."* - Tony Stark
 
-[Report Bug](https://github.com/yourusername/starkblock/issues) • [Request Feature](https://github.com/yourusername/starkblock/issues)
+[Report Bug](https://github.com/raunaksingh765/starkblock/issues) • [Request Feature](https://github.com/raunaksingh765/starkblock/issues)
 
 </div>
