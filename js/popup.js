@@ -1,308 +1,235 @@
-// StarkBlock Popup Script
+// StarkBlock Popup JavaScript
+
+// Initialize stats
 let stats = {
   blockedCount: 0,
   dataSaved: 0,
   timeSaved: 0,
-  speedBoost: 0
+  speedBoost: 0,
+  mode: 'standard'
 };
 
-let currentMode = 'standard';
-let isEnabled = true;
-
-// Initialize popup
+// Load saved data on popup open
 document.addEventListener('DOMContentLoaded', async () => {
   await loadStats();
-  await loadSettings();
-  initializeEventListeners();
-  startRealTimeUpdates();
-  animateOnLoad();
+  await loadMode();
+  await checkWhitelistStatus();
+  updateUI();
+  setupEventListeners();
+  startThreatFeed();
 });
 
-// Load statistics from storage
+// Load stats from storage
 async function loadStats() {
-  try {
-    const result = await chrome.storage.local.get(['stats']);
-    if (result.stats) {
-      stats = result.stats;
-      updateStatsDisplay();
-    }
-  } catch (error) {
-    console.error('Error loading stats:', error);
+  const result = await chrome.storage.local.get(['stats']);
+  if (result.stats) {
+    stats = { ...stats, ...result.stats };
   }
 }
 
-// Load user settings
-async function loadSettings() {
-  try {
-    const result = await chrome.storage.local.get(['mode', 'enabled']);
-    currentMode = result.mode || 'standard';
-    isEnabled = result.enabled !== false;
-    
-    // Update UI
-    document.getElementById('master-toggle').checked = isEnabled;
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.mode === currentMode);
-    });
-    
-    updateProtectionStatus();
-  } catch (error) {
-    console.error('Error loading settings:', error);
+// Load protection mode
+async function loadMode() {
+  const result = await chrome.storage.local.get(['protectionMode']);
+  if (result.protectionMode) {
+    stats.mode = result.protectionMode;
   }
 }
 
-// Update stats display
-function updateStatsDisplay() {
-  document.getElementById('blocked-count').textContent = formatNumber(stats.blockedCount);
-  document.getElementById('data-saved').textContent = formatBytes(stats.dataSaved);
-  document.getElementById('time-saved').textContent = formatTime(stats.timeSaved);
-  document.getElementById('speed-boost').textContent = `${stats.speedBoost}%`;
-}
-
-// Initialize all event listeners
-function initializeEventListeners() {
-  // Master toggle
-  document.getElementById('master-toggle').addEventListener('change', async (e) => {
-    isEnabled = e.target.checked;
-    await chrome.storage.local.set({ enabled: isEnabled });
-    updateProtectionStatus();
-    
-    // Notify background script
-    chrome.runtime.sendMessage({ 
-      action: 'toggleProtection', 
-      enabled: isEnabled 
-    });
-    
-    // Haptic feedback (visual)
-    e.target.parentElement.style.transform = 'scale(0.95)';
-    setTimeout(() => {
-      e.target.parentElement.style.transform = 'scale(1)';
-    }, 100);
-  });
-
-  // Mode selector
-  document.querySelectorAll('.mode-btn').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const mode = e.currentTarget.dataset.mode;
-      currentMode = mode;
-      
-      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-      e.currentTarget.classList.add('active');
-      
-      await chrome.storage.local.set({ mode });
-      
-      // Notify background script
-      chrome.runtime.sendMessage({ 
-        action: 'changeMode', 
-        mode 
-      });
-    });
-  });
-
-  // Whitelist site
-  document.getElementById('whitelist-site').addEventListener('click', async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    const url = new URL(tab.url);
+// Check if current site is whitelisted
+async function checkWhitelistStatus() {
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (tabs[0]) {
+    const url = new URL(tabs[0].url);
     const domain = url.hostname;
     
     const result = await chrome.storage.local.get(['whitelist']);
     const whitelist = result.whitelist || [];
     
-    if (whitelist.includes(domain)) {
-      // Remove from whitelist
-      const index = whitelist.indexOf(domain);
-      whitelist.splice(index, 1);
-      showNotification(`Removed ${domain} from whitelist`);
+    const isWhitelisted = whitelist.includes(domain);
+    const whitelistBtn = document.getElementById('whitelistBtn');
+    const whitelistText = document.getElementById('whitelistText');
+    
+    if (isWhitelisted) {
+      whitelistText.textContent = 'Remove from Whitelist';
+      whitelistBtn.style.background = 'rgba(255, 100, 100, 0.1)';
     } else {
-      // Add to whitelist
-      whitelist.push(domain);
-      showNotification(`Added ${domain} to whitelist ❤️`);
+      whitelistText.textContent = 'Whitelist Site';
+      whitelistBtn.style.background = '';
     }
-    
-    await chrome.storage.local.set({ whitelist });
-    chrome.runtime.sendMessage({ action: 'updateWhitelist', whitelist });
-  });
-
-  // Element Zapper
-  document.getElementById('element-zapper').addEventListener('click', async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    
-    await chrome.tabs.sendMessage(tab.id, { action: 'activateZapper' });
-    window.close();
-  });
-
-  // View Report
-  document.getElementById('view-report').addEventListener('click', () => {
-    chrome.tabs.create({ url: 'report.html' });
-  });
-
-  // Threat list toggle
-  document.getElementById('threat-toggle').addEventListener('click', (e) => {
-    const list = document.getElementById('threat-list');
-    const isVisible = list.style.display !== 'none';
-    
-    list.style.display = isVisible ? 'none' : 'block';
-    e.currentTarget.classList.toggle('active', !isVisible);
-  });
-
-  // Settings
-  document.getElementById('settings-btn').addEventListener('click', () => {
-    chrome.tabs.create({ url: 'settings.html' });
-  });
-
-  // About
-  document.getElementById('about-btn').addEventListener('click', () => {
-    chrome.tabs.create({ url: 'https://github.com/yourusername/starkblock' });
-  });
-}
-
-// Update protection status text
-function updateProtectionStatus() {
-  const statusText = document.getElementById('protection-status');
-  const statusCard = document.querySelector('.status-card');
-  
-  if (isEnabled) {
-    statusText.textContent = 'STARK SHIELD ACTIVE';
-    statusCard.style.borderColor = 'rgba(0, 217, 255, 0.5)';
-  } else {
-    statusText.textContent = 'PROTECTION OFFLINE';
-    statusCard.style.borderColor = 'rgba(239, 68, 68, 0.5)';
   }
 }
 
-// Start real-time updates
-function startRealTimeUpdates() {
-  // Get current tab stats
-  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-    if (tabs[0]) {
-      const tabId = tabs[0].id;
-      const result = await chrome.storage.local.get([`tabStats_${tabId}`]);
-      
-      if (result[`tabStats_${tabId}`]) {
-        updateThreatList(result[`tabStats_${tabId}`].blocked);
-      }
-    }
-  });
-
-  // Listen for updates
-  chrome.runtime.onMessage.addListener((message) => {
-    if (message.action === 'statsUpdate') {
-      stats = message.stats;
-      updateStatsDisplay();
-    } else if (message.action === 'threatBlocked') {
-      addThreatToList(message.threat);
+// Update UI with current stats
+function updateUI() {
+  document.getElementById('blockedCount').textContent = stats.blockedCount.toLocaleString();
+  document.getElementById('dataSaved').textContent = formatBytes(stats.dataSaved);
+  document.getElementById('timeSaved').textContent = formatTime(stats.timeSaved);
+  document.getElementById('speedBoost').textContent = stats.speedBoost + '%';
+  
+  // Update active mode button
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.dataset.mode === stats.mode) {
+      btn.classList.add('active');
     }
   });
 }
 
-// Update threat list
-function updateThreatList(threats) {
-  const list = document.getElementById('threat-list');
-  const badge = document.getElementById('threat-count-badge');
+// Format bytes to readable format
+function formatBytes(bytes) {
+  if (bytes === 0) return '0 MB';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+// Format seconds to readable format
+function formatTime(seconds) {
+  if (seconds === 0) return '0s';
+  if (seconds < 60) return seconds + 's';
+  if (seconds < 3600) return Math.floor(seconds / 60) + 'm';
+  return (seconds / 3600).toFixed(1) + 'h';
+}
+
+// Setup event listeners
+function setupEventListeners() {
+  // Mode selector buttons
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const mode = btn.dataset.mode;
+      stats.mode = mode;
+      await chrome.storage.local.set({ protectionMode: mode });
+      
+      // Send message to background script
+      chrome.runtime.sendMessage({ 
+        action: 'changeModer',
+        mode: mode 
+      });
+      
+      updateUI();
+      showNotification(`Protection mode changed to ${mode.toUpperCase()}`);
+    });
+  });
   
-  if (!threats || threats.length === 0) {
-    list.innerHTML = '<div class="empty-state">No threats detected on this page</div>';
-    badge.textContent = '0';
+  // Element Zapper
+  document.getElementById('elementZapper').addEventListener('click', async () => {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs[0]) {
+      await chrome.tabs.sendMessage(tabs[0].id, { action: 'startZapper' });
+      window.close();
+    }
+  });
+  
+  // Whitelist button
+  document.getElementById('whitelistBtn').addEventListener('click', async () => {
+    const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tabs[0]) {
+      const url = new URL(tabs[0].url);
+      const domain = url.hostname;
+      
+      const result = await chrome.storage.local.get(['whitelist']);
+      let whitelist = result.whitelist || [];
+      
+      const index = whitelist.indexOf(domain);
+      if (index > -1) {
+        whitelist.splice(index, 1);
+        showNotification(`Removed ${domain} from whitelist`);
+      } else {
+        whitelist.push(domain);
+        showNotification(`Added ${domain} to whitelist`);
+      }
+      
+      await chrome.storage.local.set({ whitelist });
+      await checkWhitelistStatus();
+      
+      // Reload the tab
+      chrome.tabs.reload(tabs[0].id);
+    }
+  });
+  
+  // Settings button
+  document.getElementById('settingsBtn').addEventListener('click', () => {
+    chrome.runtime.openOptionsPage();
+  });
+  
+  // About button
+  document.getElementById('aboutBtn').addEventListener('click', () => {
+    chrome.tabs.create({ url: 'https://github.com/raunaksingh765/starkblock' });
+  });
+}
+
+// Start threat feed updates
+function startThreatFeed() {
+  updateThreatFeed();
+  setInterval(updateThreatFeed, 3000);
+}
+
+// Update threat feed with recent blocks
+async function updateThreatFeed() {
+  const result = await chrome.storage.local.get(['recentBlocks']);
+  const recentBlocks = result.recentBlocks || [];
+  
+  const feedElement = document.getElementById('threatFeed');
+  
+  if (recentBlocks.length === 0) {
+    feedElement.innerHTML = `
+      <div class="threat-item">
+        <span class="threat-type">✅ Clean</span>
+        <span class="threat-domain">No threats detected</span>
+      </div>
+    `;
     return;
   }
   
-  badge.textContent = threats.length.toString();
-  list.innerHTML = threats.slice(0, 10).map(threat => `
+  feedElement.innerHTML = recentBlocks.slice(0, 5).map(block => `
     <div class="threat-item">
-      <strong>${threat.type}</strong>: ${threat.url}
+      <span class="threat-type">${getBlockIcon(block.type)} ${block.type}</span>
+      <span class="threat-domain">${block.domain}</span>
     </div>
   `).join('');
 }
 
-// Add new threat to list (real-time)
-function addThreatToList(threat) {
-  const list = document.getElementById('threat-list');
-  const badge = document.getElementById('threat-count-badge');
-  const currentCount = parseInt(badge.textContent);
-  
-  // Remove empty state if exists
-  const emptyState = list.querySelector('.empty-state');
-  if (emptyState) {
-    list.innerHTML = '';
-  }
-  
-  // Add new threat at top
-  const threatItem = document.createElement('div');
-  threatItem.className = 'threat-item';
-  threatItem.innerHTML = `<strong>${threat.type}</strong>: ${threat.url}`;
-  threatItem.style.animation = 'slideIn 0.3s ease-out';
-  
-  list.insertBefore(threatItem, list.firstChild);
-  
-  // Update badge
-  badge.textContent = (currentCount + 1).toString();
-  
-  // Keep only last 10
-  const items = list.querySelectorAll('.threat-item');
-  if (items.length > 10) {
-    items[items.length - 1].remove();
-  }
+// Get icon for block type
+function getBlockIcon(type) {
+  const icons = {
+    'Ad': '🎯',
+    'Tracker': '🔍',
+    'Malware': '⚠️',
+    'Script': '📜',
+    'Cookie': '🍪'
+  };
+  return icons[type] || '🛡️';
 }
 
 // Show notification
 function showNotification(message) {
+  // Create notification element
   const notification = document.createElement('div');
   notification.style.cssText = `
     position: fixed;
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: linear-gradient(135deg, rgba(0, 217, 255, 0.9), rgba(0, 217, 255, 0.7));
+    background: rgba(0, 217, 255, 0.95);
     color: #0a0e27;
     padding: 12px 24px;
     border-radius: 8px;
     font-weight: 600;
     z-index: 10000;
-    animation: slideIn 0.3s ease-out;
-    box-shadow: 0 4px 20px rgba(0, 217, 255, 0.5);
+    animation: slideIn 0.3s ease;
   `;
   notification.textContent = message;
   document.body.appendChild(notification);
   
   setTimeout(() => {
-    notification.style.animation = 'slideOut 0.3s ease-out';
+    notification.style.animation = 'slideOut 0.3s ease';
     setTimeout(() => notification.remove(), 300);
   }, 2000);
 }
 
-// Format numbers with K, M notation
-function formatNumber(num) {
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-  return num.toString();
-}
-
-// Format bytes to MB, GB
-function formatBytes(bytes) {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + ' GB';
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
-  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return bytes + ' B';
-}
-
-// Format time in hours
-function formatTime(seconds) {
-  const hours = seconds / 3600;
-  if (hours >= 1) return hours.toFixed(1) + 'h';
-  const minutes = seconds / 60;
-  if (minutes >= 1) return minutes.toFixed(0) + 'm';
-  return seconds.toFixed(0) + 's';
-}
-
-// Animate on load
-function animateOnLoad() {
-  const cards = document.querySelectorAll('.stat-card');
-  cards.forEach((card, index) => {
-    card.style.opacity = '0';
-    card.style.transform = 'translateY(10px)';
-    setTimeout(() => {
-      card.style.transition = 'all 0.4s ease';
-      card.style.opacity = '1';
-      card.style.transform = 'translateY(0)';
-    }, index * 50);
-  });
-}
+// Listen for messages from background script
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'statsUpdated') {
+    loadStats().then(() => updateUI());
+  }
+});
