@@ -4,130 +4,99 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>StarkBlock</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/popup.css">
 </head>
 <body>
   <div class="container">
     <!-- Header -->
     <div class="header">
-      <div class="logo-container">
+      <div class="logo">
         <div class="arc-reactor">
-          <div class="core"></div>
-          <div class="ring ring-1"></div>
-          <div class="ring ring-2"></div>
-          <div class="ring ring-3"></div>
+          <div class="reactor-core"></div>
+          <div class="reactor-ring"></div>
+          <div class="reactor-ring2"></div>
         </div>
-        <h1 class="title">STARK<span class="block">BLOCK</span></h1>
       </div>
-      <div class="version">v1.0.0</div>
-    </div>
-
-    <!-- Protection Status -->
-    <div class="status-card">
-      <div class="status-header">
-        <div class="shield-icon">🛡️</div>
-        <span id="protection-status" class="status-text">STARK SHIELD ACTIVE</span>
-      </div>
-      <div class="power-toggle">
-        <label class="switch">
-          <input type="checkbox" id="master-toggle" checked>
-          <span class="slider">
-            <span class="slider-text off">OFFLINE</span>
-            <span class="slider-text on">ONLINE</span>
-          </span>
-        </label>
+      <h1 class="title">STARK<span class="highlight">BLOCK</span></h1>
+      <div class="status-badge" id="statusBadge">
+        <span class="status-dot"></span>
+        <span class="status-text">PROTECTED</span>
       </div>
     </div>
 
-    <!-- Stats Dashboard -->
+    <!-- Stats Grid -->
     <div class="stats-grid">
       <div class="stat-card">
+        <div class="stat-icon">🛡️</div>
+        <div class="stat-value" id="blockedCount">0</div>
+        <div class="stat-label">Threats Blocked</div>
+      </div>
+      <div class="stat-card">
         <div class="stat-icon">⚡</div>
-        <div class="stat-content">
-          <div class="stat-value" id="blocked-count">0</div>
-          <div class="stat-label">Threats Blocked</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">🚀</div>
-        <div class="stat-content">
-          <div class="stat-value" id="speed-boost">0%</div>
-          <div class="stat-label">Speed Boost</div>
-        </div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-icon">💾</div>
-        <div class="stat-content">
-          <div class="stat-value" id="data-saved">0 MB</div>
-          <div class="stat-label">Data Saved</div>
-        </div>
+        <div class="stat-value" id="dataSaved">0 MB</div>
+        <div class="stat-label">Data Saved</div>
       </div>
       <div class="stat-card">
         <div class="stat-icon">⏱️</div>
-        <div class="stat-content">
-          <div class="stat-value" id="time-saved">0h</div>
-          <div class="stat-label">Time Saved</div>
-        </div>
+        <div class="stat-value" id="timeSaved">0s</div>
+        <div class="stat-label">Time Saved</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🚀</div>
+        <div class="stat-value" id="speedBoost">0%</div>
+        <div class="stat-label">Speed Boost</div>
       </div>
     </div>
 
-    <!-- Protection Modes -->
-    <div class="modes-section">
-      <h2 class="section-title">PROTECTION MODE</h2>
+    <!-- Protection Mode -->
+    <div class="section">
+      <h3 class="section-title">Protection Mode</h3>
       <div class="mode-selector">
         <button class="mode-btn" data-mode="stealth">
           <span class="mode-icon">👻</span>
-          <span class="mode-name">Stealth</span>
+          <span>Stealth</span>
         </button>
         <button class="mode-btn active" data-mode="standard">
           <span class="mode-icon">🛡️</span>
-          <span class="mode-name">Standard</span>
+          <span>Standard</span>
         </button>
         <button class="mode-btn" data-mode="aggressive">
           <span class="mode-icon">💥</span>
-          <span class="mode-name">Aggressive</span>
+          <span>Aggressive</span>
         </button>
       </div>
     </div>
 
     <!-- Quick Actions -->
-    <div class="actions-section">
-      <h2 class="section-title">QUICK ACTIONS</h2>
-      <div class="action-buttons">
-        <button class="action-btn" id="whitelist-site">
-          <span class="btn-icon">❤️</span>
-          <span class="btn-text">Whitelist Site</span>
-        </button>
-        <button class="action-btn" id="element-zapper">
+    <div class="section">
+      <h3 class="section-title">Quick Actions</h3>
+      <div class="actions">
+        <button class="action-btn" id="elementZapper">
           <span class="btn-icon">⚡</span>
-          <span class="btn-text">Element Zapper</span>
+          <span>Element Zapper</span>
         </button>
-        <button class="action-btn" id="view-report">
-          <span class="btn-icon">📊</span>
-          <span class="btn-text">View Report</span>
+        <button class="action-btn" id="whitelistBtn">
+          <span class="btn-icon">❤️</span>
+          <span id="whitelistText">Whitelist Site</span>
         </button>
       </div>
     </div>
 
-    <!-- Threat List (Collapsible) -->
-    <div class="threat-section">
-      <button class="threat-header" id="threat-toggle">
-        <span class="threat-title">BLOCKED THREATS (Live)</span>
-        <span class="threat-count" id="threat-count-badge">0</span>
-        <span class="chevron">▼</span>
-      </button>
-      <div class="threat-list" id="threat-list" style="display: none;">
-        <div class="empty-state">No threats detected on this page</div>
+    <!-- Threat Feed -->
+    <div class="section">
+      <h3 class="section-title">Recent Blocks</h3>
+      <div class="threat-feed" id="threatFeed">
+        <div class="threat-item">
+          <span class="threat-type">🎯 Ad</span>
+          <span class="threat-domain">Loading...</span>
+        </div>
       </div>
     </div>
 
     <!-- Footer -->
     <div class="footer">
-      <button class="footer-btn" id="settings-btn">⚙️ Settings</button>
-      <button class="footer-btn" id="about-btn">ℹ️ About</button>
+      <button class="footer-btn" id="settingsBtn">⚙️ Settings</button>
+      <button class="footer-btn" id="aboutBtn">ℹ️ About</button>
     </div>
   </div>
 
