@@ -1,68 +1,147 @@
 // StarkBlock Content Script
-let zapperMode = false;
-let zapperOverlay = null;
 
-// Initialize
+// Element Zapper state
+let zapperActive = false;
+let zapperOverlay = null;
+let zapperHighlight = null;
+
+// Initialize content script
 (function() {
   'use strict';
   
-  // Load and apply zapped elements for this domain
-  loadZappedElements();
+  console.log('StarkBlock content script loaded');
   
-  // Block cookie consent banners
-  blockCookieBanners();
+  // Remove cookie banners
+  removeCookieBanners();
   
-  // Block annoying overlays
-  blockAnnoyingElements();
+  // Block ads in page
+  blockAdsInPage();
   
-  // Initialize YouTube blocker if on YouTube
+  // YouTube ad blocking
   if (window.location.hostname.includes('youtube.com')) {
-    initYouTubeBlocker();
+    blockYouTubeAds();
   }
-  
-  // Apply custom CSS
-  injectCustomStyles();
 })();
 
-// Listen for messages from background/popup
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  switch (message.action) {
-    case 'activateZapper':
-      activateElementZapper();
-      break;
-      
-    case 'initYouTubeBlocker':
-      initYouTubeBlocker();
-      break;
-  }
+// Remove cookie consent banners
+function removeCookieBanners() {
+  const cookieSelectors = [
+    '[class*="cookie"]',
+    '[id*="cookie"]',
+    '[class*="gdpr"]',
+    '[id*="gdpr"]',
+    '[class*="consent"]',
+    '[id*="consent"]',
+    '[aria-label*="cookie"]',
+    '[aria-label*="consent"]'
+  ];
   
+  setTimeout(() => {
+    cookieSelectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => {
+        if (el.offsetHeight > 50 && el.offsetWidth > 200) {
+          el.style.display = 'none';
+          sendBlockNotification('Cookie', el.className || 'banner');
+        }
+      });
+    });
+  }, 1000);
+}
+
+// Block ads in page content
+function blockAdsInPage() {
+  const adSelectors = [
+    '[class*="advertisement"]',
+    '[id*="advertisement"]',
+    '[class*="ad-container"]',
+    '[id*="ad-container"]',
+    '[class*="google-ad"]',
+    '[id*="google-ad"]',
+    'iframe[src*="doubleclick"]',
+    'iframe[src*="googlesyndication"]',
+    'iframe[src*="ads"]'
+  ];
+  
+  const observer = new MutationObserver(() => {
+    adSelectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => {
+        if (!el.dataset.starkblocked) {
+          el.style.display = 'none';
+          el.dataset.starkblocked = 'true';
+          sendBlockNotification('Ad', el.className || 'inline');
+        }
+      });
+    });
+  });
+  
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+}
+
+// YouTube-specific ad blocking
+function blockYouTubeAds() {
+  console.log('StarkBlock: YouTube ad blocking active');
+  
+  // Skip ads when they appear
+  setInterval(() => {
+    // Skip button
+    const skipButton = document.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button');
+    if (skipButton) {
+      skipButton.click();
+      console.log('StarkBlock: Skipped YouTube ad');
+    }
+    
+    // Hide ad overlay
+    const adOverlay = document.querySelector('.ytp-ad-player-overlay');
+    if (adOverlay) {
+      adOverlay.style.display = 'none';
+    }
+    
+    // Mute during ads
+    const video = document.querySelector('video');
+    const adIndicator = document.querySelector('.ytp-ad-text');
+    if (video && adIndicator) {
+      video.muted = true;
+      video.currentTime = video.duration; // Try to skip to end
+    }
+  }, 500);
+}
+
+// Send block notification to background
+function sendBlockNotification(type, domain) {
+  chrome.runtime.sendMessage({
+    action: 'blockDetected',
+    data: { type, domain }
+  }).catch(() => {
+    // Ignore if background script not available
+  });
+}
+
+// Listen for messages from popup
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === 'startZapper') {
+    startElementZapper();
+    sendResponse({ success: true });
+  }
   return true;
 });
 
-// Load previously zapped elements
-async function loadZappedElements() {
-  try {
-    const result = await chrome.storage.local.get(['zappedElements']);
-    const zappedElements = result.zappedElements || {};
-    const domain = window.location.hostname;
-    
-    if (zappedElements[domain]) {
-      zappedElements[domain].forEach(selector => {
-        hideElement(selector);
-      });
-    }
-  } catch (error) {
-    console.error('StarkBlock: Error loading zapped elements', error);
-  }
+// Element Zapper functionality
+function startElementZapper() {
+  if (zapperActive) return;
+  
+  zapperActive = true;
+  createZapperUI();
+  
+  // Add event listeners
+  document.addEventListener('mousemove', zapperMouseMove);
+  document.addEventListener('click', zapperClick);
+  document.addEventListener('keydown', zapperKeyDown);
 }
 
-// Element Zapper - Interactive element removal
-function activateElementZapper() {
-  if (zapperMode) return;
-  
-  zapperMode = true;
-  document.body.style.cursor = 'crosshair';
-  
+function createZapperUI() {
   // Create overlay
   zapperOverlay = document.createElement('div');
   zapperOverlay.id = 'starkblock-zapper-overlay';
@@ -72,307 +151,136 @@ function activateElementZapper() {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 217, 255, 0.1);
-    z-index: 999999;
-    pointer-events: none;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 999998;
+    cursor: crosshair;
   `;
-  document.body.appendChild(zapperOverlay);
   
-  // Create instruction banner
-  const banner = document.createElement('div');
-  banner.id = 'starkblock-zapper-banner';
-  banner.style.cssText = `
+  // Create highlight
+  zapperHighlight = document.createElement('div');
+  zapperHighlight.id = 'starkblock-zapper-highlight';
+  zapperHighlight.style.cssText = `
+    position: absolute;
+    border: 3px solid #00D9FF;
+    background: rgba(0, 217, 255, 0.1);
+    pointer-events: none;
+    z-index: 999999;
+    box-shadow: 0 0 20px rgba(0, 217, 255, 0.5);
+    transition: all 0.1s ease;
+  `;
+  
+  // Create instructions
+  const instructions = document.createElement('div');
+  instructions.id = 'starkblock-zapper-instructions';
+  instructions.style.cssText = `
     position: fixed;
     top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: linear-gradient(135deg, #00D9FF, #0891b2);
+    background: rgba(0, 217, 255, 0.95);
     color: #0a0e27;
     padding: 15px 30px;
-    border-radius: 10px;
-    font-family: 'Segoe UI', sans-serif;
-    font-weight: 700;
+    border-radius: 8px;
+    font-family: 'Arial', sans-serif;
+    font-weight: bold;
     font-size: 16px;
     z-index: 1000000;
     box-shadow: 0 4px 20px rgba(0, 217, 255, 0.5);
-    animation: slideDown 0.3s ease-out;
   `;
-  banner.innerHTML = `
-    ⚡ ELEMENT ZAPPER ACTIVE - Click to remove elements | ESC to exit
-  `;
-  document.body.appendChild(banner);
+  instructions.textContent = '⚡ Element Zapper Active - Click to remove element | Press ESC to exit';
   
-  // Highlight on hover
-  const hoverHighlight = (e) => {
-    if (e.target.id === 'starkblock-zapper-banner' || 
-        e.target.id === 'starkblock-zapper-overlay') return;
-    
-    const element = e.target;
-    element.style.outline = '3px solid #00D9FF';
-    element.style.outlineOffset = '2px';
-    element.style.boxShadow = '0 0 20px rgba(0, 217, 255, 0.5)';
-  };
-  
-  const removeHighlight = (e) => {
-    if (e.target.id === 'starkblock-zapper-banner' || 
-        e.target.id === 'starkblock-zapper-overlay') return;
-    
-    const element = e.target;
-    element.style.outline = '';
-    element.style.outlineOffset = '';
-    element.style.boxShadow = '';
-  };
-  
-  // Zap on click
-  const zapElement = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (e.target.id === 'starkblock-zapper-banner' || 
-        e.target.id === 'starkblock-zapper-overlay') return;
-    
-    const element = e.target;
-    const selector = generateSelector(element);
-    
-    // Animate removal
-    element.style.transition = 'all 0.3s ease';
-    element.style.transform = 'scale(0)';
-    element.style.opacity = '0';
-    
-    setTimeout(() => {
-      element.remove();
-    }, 300);
-    
-    // Save to storage
-    chrome.runtime.sendMessage({
-      action: 'elementZapped',
-      selector: selector
-    });
-    
-    // Show notification
-    showZapNotification('Element zapped! ⚡');
-  };
-  
-  // Exit on ESC
-  const exitZapper = (e) => {
-    if (e.key === 'Escape') {
-      deactivateZapper();
-    }
-  };
-  
-  // Add event listeners
-  document.addEventListener('mouseover', hoverHighlight);
-  document.addEventListener('mouseout', removeHighlight);
-  document.addEventListener('click', zapElement, true);
-  document.addEventListener('keydown', exitZapper);
-  
-  // Store cleanup function
-  window.starkblockZapperCleanup = () => {
-    document.removeEventListener('mouseover', hoverHighlight);
-    document.removeEventListener('mouseout', removeHighlight);
-    document.removeEventListener('click', zapElement, true);
-    document.removeEventListener('keydown', exitZapper);
-  };
+  document.body.appendChild(zapperOverlay);
+  document.body.appendChild(zapperHighlight);
+  document.body.appendChild(instructions);
 }
 
-// Deactivate zapper
-function deactivateZapper() {
-  zapperMode = false;
-  document.body.style.cursor = '';
+function zapperMouseMove(e) {
+  if (!zapperActive) return;
   
-  if (zapperOverlay) {
-    zapperOverlay.remove();
-    zapperOverlay = null;
-  }
+  // Get element under cursor
+  const element = document.elementFromPoint(e.clientX, e.clientY);
   
-  const banner = document.getElementById('starkblock-zapper-banner');
-  if (banner) banner.remove();
-  
-  if (window.starkblockZapperCleanup) {
-    window.starkblockZapperCleanup();
+  if (element && element.id !== 'starkblock-zapper-highlight' && 
+      element.id !== 'starkblock-zapper-overlay' &&
+      element.id !== 'starkblock-zapper-instructions') {
+    
+    const rect = element.getBoundingClientRect();
+    zapperHighlight.style.left = rect.left + window.scrollX + 'px';
+    zapperHighlight.style.top = rect.top + window.scrollY + 'px';
+    zapperHighlight.style.width = rect.width + 'px';
+    zapperHighlight.style.height = rect.height + 'px';
+    zapperHighlight.style.display = 'block';
   }
 }
 
-// Generate CSS selector for element
-function generateSelector(element) {
-  if (element.id) return `#${element.id}`;
-  if (element.className) {
-    const classes = element.className.split(' ').filter(c => c).join('.');
-    if (classes) return `${element.tagName.toLowerCase()}.${classes}`;
+function zapperClick(e) {
+  if (!zapperActive) return;
+  
+  e.preventDefault();
+  e.stopPropagation();
+  
+  // Get element under cursor
+  const element = document.elementFromPoint(e.clientX, e.clientY);
+  
+  if (element && element.id !== 'starkblock-zapper-highlight' && 
+      element.id !== 'starkblock-zapper-overlay' &&
+      element.id !== 'starkblock-zapper-instructions') {
+    
+    // Remove the element
+    element.style.display = 'none';
+    element.remove();
+    
+    // Show success notification
+    showZapperNotification('⚡ Element Zapped!');
+    
+    // Send notification
+    sendBlockNotification('Element', element.tagName);
   }
-  return element.tagName.toLowerCase();
 }
 
-// Hide element by selector
-function hideElement(selector) {
-  const elements = document.querySelectorAll(selector);
-  elements.forEach(el => {
-    el.style.display = 'none !important';
-  });
+function zapperKeyDown(e) {
+  if (e.key === 'Escape') {
+    stopElementZapper();
+  }
 }
 
-// Block cookie consent banners
-function blockCookieBanners() {
-  const cookieBannerSelectors = [
-    '[class*="cookie"]',
-    '[id*="cookie"]',
-    '[class*="consent"]',
-    '[id*="consent"]',
-    '[class*="gdpr"]',
-    '[id*="gdpr"]',
-    '.cc-window',
-    '.cc-banner',
-    '#onetrust-consent-sdk',
-    '[class*="CookieConsent"]'
-  ];
+function stopElementZapper() {
+  if (!zapperActive) return;
   
-  const observer = new MutationObserver(() => {
-    cookieBannerSelectors.forEach(selector => {
-      const elements = document.querySelectorAll(selector);
-      elements.forEach(el => {
-        if (el.textContent.toLowerCase().includes('cookie') || 
-            el.textContent.toLowerCase().includes('consent')) {
-          el.style.display = 'none';
-        }
-      });
-    });
-  });
+  zapperActive = false;
   
-  observer.observe(document.body, { childList: true, subtree: true });
+  // Remove event listeners
+  document.removeEventListener('mousemove', zapperMouseMove);
+  document.removeEventListener('click', zapperClick);
+  document.removeEventListener('keydown', zapperKeyDown);
   
-  // Initial cleanup
-  setTimeout(() => {
-    cookieBannerSelectors.forEach(selector => {
-      try {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach(el => el.remove());
-      } catch (e) {}
-    });
-  }, 1000);
+  // Remove UI elements
+  if (zapperOverlay) zapperOverlay.remove();
+  if (zapperHighlight) zapperHighlight.remove();
+  document.getElementById('starkblock-zapper-instructions')?.remove();
 }
 
-// Block annoying elements
-function blockAnnoyingElements() {
-  const annoyingSelectors = [
-    '[class*="popup"]',
-    '[class*="modal"][class*="newsletter"]',
-    '[class*="subscribe-overlay"]',
-    '[id*="popup"]',
-    '[class*="notification-permission"]'
-  ];
-  
-  setInterval(() => {
-    annoyingSelectors.forEach(selector => {
-      try {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach(el => {
-          if (el.offsetHeight > 200 && el.style.position === 'fixed') {
-            el.remove();
-          }
-        });
-      } catch (e) {}
-    });
-  }, 2000);
-}
-
-// YouTube Ad Blocker
-function initYouTubeBlocker() {
-  // Skip ads on YouTube
-  const skipAd = () => {
-    // Click skip button
-    const skipButton = document.querySelector('.ytp-ad-skip-button, .ytp-skip-ad-button');
-    if (skipButton) {
-      skipButton.click();
-    }
-    
-    // Hide ad overlay
-    const adOverlay = document.querySelector('.ytp-ad-overlay-container');
-    if (adOverlay) {
-      adOverlay.style.display = 'none';
-    }
-    
-    // Fast-forward through ad
-    const video = document.querySelector('video');
-    if (video && document.querySelector('.ad-showing')) {
-      video.currentTime = video.duration;
-    }
-  };
-  
-  // Run frequently
-  setInterval(skipAd, 500);
-  
-  // Remove ad containers
-  const adContainers = [
-    '#player-ads',
-    '.ytp-ad-module',
-    'ytd-companion-slot-renderer',
-    '#masthead-ad'
-  ];
-  
-  setInterval(() => {
-    adContainers.forEach(selector => {
-      const elements = document.querySelectorAll(selector);
-      elements.forEach(el => el.remove());
-    });
-  }, 1000);
-}
-
-// Inject custom styles
-function injectCustomStyles() {
-  const style = document.createElement('style');
-  style.textContent = `
-    @keyframes slideDown {
-      from {
-        transform: translateX(-50%) translateY(-100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(-50%) translateY(0);
-        opacity: 1;
-      }
-    }
-    
-    /* Hide known ad containers */
-    [class*="advertisement"],
-    [id*="advertisement"],
-    [class*="ad-container"],
-    [id*="google_ads"],
-    iframe[src*="doubleclick"],
-    iframe[src*="googlesyndication"] {
-      display: none !important;
-      visibility: hidden !important;
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-// Show zap notification
-function showZapNotification(message) {
+function showZapperNotification(message) {
   const notification = document.createElement('div');
   notification.style.cssText = `
     position: fixed;
     top: 80px;
     left: 50%;
     transform: translateX(-50%);
-    background: linear-gradient(135deg, #00D9FF, #0891b2);
+    background: rgba(0, 217, 255, 0.95);
     color: #0a0e27;
     padding: 12px 24px;
     border-radius: 8px;
-    font-weight: 700;
-    font-size: 14px;
+    font-weight: bold;
     z-index: 1000001;
-    animation: slideDown 0.3s ease-out;
     box-shadow: 0 4px 20px rgba(0, 217, 255, 0.5);
+    animation: slideIn 0.3s ease;
   `;
   notification.textContent = message;
   document.body.appendChild(notification);
   
   setTimeout(() => {
-    notification.style.transition = 'all 0.3s ease';
-    notification.style.opacity = '0';
-    notification.style.transform = 'translateX(-50%) translateY(-20px)';
+    notification.style.animation = 'slideOut 0.3s ease';
     setTimeout(() => notification.remove(), 300);
-  }, 2000);
+  }, 1500);
 }
-
-console.log('StarkBlock: Protection active on this page');
