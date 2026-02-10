@@ -1,107 +1,45 @@
-/* StarkBlock Content Styles - Applied to all web pages */
+/* StarkBlock Content Script Styles */
 
 /* Hide common ad containers */
+[class*="advertisement"],
+[id*="advertisement"],
+[class*="ad-container"],
+[id*="ad-container"],
 [class*="google-ad"],
-[class*="googlead"],
-[id*="google-ad"],
-[id*="googlead"],
-.ad,
-.ads,
-.advert,
-.advertisement,
-.ad-container,
-.ad-wrapper,
-.sponsored,
-.sponsor-content,
-[data-ad-slot],
-[data-google-query-id] {
+[id*="google-ad"] {
   display: none !important;
   visibility: hidden !important;
   opacity: 0 !important;
-  position: absolute !important;
-  left: -9999px !important;
+  height: 0 !important;
+  width: 0 !important;
 }
 
-/* Cookie consent banners */
-[class*="cookie-banner"],
-[class*="cookie-consent"],
-[class*="cookie-notice"],
-[id*="cookie-banner"],
-[id*="cookie-consent"],
-.cc-window,
-.cc-banner,
-#onetrust-banner-sdk,
-#onetrust-consent-sdk {
-  display: none !important;
-}
-
-/* Newsletter popups */
-[class*="newsletter-popup"],
-[class*="email-popup"],
-[class*="subscribe-modal"],
-[id*="newsletter-popup"] {
-  display: none !important;
-}
-
-/* Social media widgets (optional - can be toggled) */
-iframe[src*="facebook.com/plugins"],
-iframe[src*="twitter.com/widgets"],
-iframe[src*="instagram.com/embed"] {
-  /* Keeping visible by default - users can zap if needed */
-}
-
-/* Remove fixed overlays that block content */
-body > div[style*="position: fixed"][style*="z-index"] {
-  /* Only target suspicious overlays */
-}
-
-/* YouTube ad containers */
-#player-ads,
-.ytp-ad-module,
-.video-ads,
-ytd-companion-slot-renderer,
-ytd-action-companion-ad-renderer,
-#masthead-ad {
-  display: none !important;
-}
-
-/* Tracking pixels */
+/* Hide tracking pixels */
 img[width="1"][height="1"],
-img[style*="width:1px"][style*="height:1px"] {
+img[style*="width: 1px"],
+img[style*="height: 1px"] {
   display: none !important;
 }
 
-/* Anti-adblock detection (stealth mode) */
-.adblock-detected,
-.ad-blocker-detected,
-[id*="adblock-warning"] {
-  display: none !important;
-}
-
-/* StarkBlock watermark (subtle) */
-body::after {
-  content: '';
-  position: fixed;
-  bottom: 10px;
-  right: 10px;
-  width: 8px;
-  height: 8px;
-  background: #00D9FF;
-  border-radius: 50%;
-  opacity: 0.3;
-  box-shadow: 0 0 10px rgba(0, 217, 255, 0.5);
-  pointer-events: none;
-  z-index: 999999;
-  animation: starkPulse 2s ease-in-out infinite;
-}
-
-@keyframes starkPulse {
-  0%, 100% { 
-    transform: scale(1);
-    opacity: 0.3;
+/* Animation for notifications */
+@keyframes slideIn {
+  from {
+    transform: translateX(-50%) translateY(-20px);
+    opacity: 0;
   }
-  50% { 
-    transform: scale(1.2);
-    opacity: 0.6;
+  to {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOut {
+  from {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-50%) translateY(-20px);
+    opacity: 0;
   }
 }
