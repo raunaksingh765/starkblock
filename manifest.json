@@ -5,7 +5,6 @@
   "description": "Genius-level ad blocking. Built different. Blocks better.",
   "icons": {
     "16": "icons/icon16.png",
-    "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
@@ -13,11 +12,21 @@
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
-      "32": "icons/icon32.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
   },
+  "permissions": [
+    "declarativeNetRequest",
+    "declarativeNetRequestFeedback",
+    "storage",
+    "tabs",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
     "service_worker": "js/background.js"
   },
@@ -28,17 +37,6 @@
       "css": ["css/content.css"],
       "run_at": "document_start"
     }
-  ],
-  "permissions": [
-    "storage",
-    "tabs",
-    "webRequest",
-    "webNavigation",
-    "declarativeNetRequest",
-    "declarativeNetRequestFeedback"
-  ],
-  "host_permissions": [
-    "<all_urls>"
   ],
   "declarative_net_request": {
     "rule_resources": [
@@ -51,7 +49,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["assets/*"],
+      "resources": ["icons/*"],
       "matches": ["<all_urls>"]
     }
   ]
